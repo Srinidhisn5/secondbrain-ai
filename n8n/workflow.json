@@ -509,7 +509,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const category = $json.category;\nconst date = new Date().toISOString().split('T')[0];\nconst desc = ($json.filename_description || 'screenshot').replace(/[^a-z0-9-]/gi, '-');\nconst newFilename = `${category}_${date}_${desc}.png`;\nreturn [{ json: { ...$json, new_filename: newFilename, target_folder: category }, binary: $input.item.binary }];"
+        "jsCode": "const category = $json.category || 'Other';\nconst date = new Date().toISOString().split('T')[0];\n\nconst desc = ($json.filename_description || 'screenshot')\n  .replace(/[^a-z0-9-]/gi, '-')\n  .replace(/-+/g, '-')\n  .replace(/^-|-$/g, '');\n\nconst originalName = $json.name || '';\nconst match = originalName.match(/\\.([a-z0-9]+)$/i);\nconst extension = match ? match[1].toLowerCase() : 'png';\n\nconst newFilename = `${category}_${date}_${desc}.${extension}`;\n\nreturn [{\n  json: {\n    ...$json,\n    new_filename: newFilename,\n    target_folder: category\n  },\n  binary: $input.item.binary\n}];"
       },
       "id": "5b074bf9-9525-42a5-bcee-407271f73f7a",
       "name": "Build Filename (Filed)",
@@ -522,7 +522,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const date = new Date().toISOString().split('T')[0];\nconst desc = ($json.filename_description || 'screenshot').replace(/[^a-z0-9-]/gi, '-');\nconst newFilename = `NeedsReview_${date}_${desc}.png`;\nreturn [{ json: { ...$json, new_filename: newFilename, target_folder: 'Needs Review' }, binary: $input.item.binary }];"
+        "jsCode": "const date = new Date().toISOString().split('T')[0];\n\nconst desc = ($json.filename_description || 'screenshot')\n  .replace(/[^a-z0-9-]/gi, '-')\n  .replace(/-+/g, '-')\n  .replace(/^-|-$/g, '');\n\nconst originalName = $json.name || '';\nconst match = originalName.match(/\\.([a-z0-9]+)$/i);\nconst extension = match ? match[1].toLowerCase() : 'png';\n\nconst newFilename = `NeedsReview_${date}_${desc}.${extension}`;\n\nreturn [{\n  json: {\n    ...$json,\n    new_filename: newFilename,\n    target_folder: 'Needs Review'\n  },\n  binary: $input.item.binary\n}];"
       },
       "id": "dd905f35-9104-41d7-9d36-6b025752d3d2",
       "name": "Build Filename (Review)",
@@ -569,7 +569,7 @@
           "name": "Google Drive account"
         }
       },
-      "notes": "Set destination folder dynamically based on $json.target_folder - map category name to the corresponding folder ID (maintain this mapping in a Set node upstream or hardcode a switch)."
+      "notes": "The destination folder is resolved dynamically from the AI-selected category by the Find Category Folder node. Create the category folder in the root of My Drive before processing screenshots."
     },
     {
       "parameters": {
@@ -590,10 +590,10 @@
         },
         "folderId": {
           "__rl": true,
-          "value": "1rRNYKWf0r5JwAeL0BC5cCwmDemxrOj2A",
+          "value": "YOUR_NEEDS_REVIEW_FOLDER_ID",
           "mode": "list",
           "cachedResultName": "Needs Review",
-          "cachedResultUrl": "https://drive.google.com/drive/folders/1rRNYKWf0r5JwAeL0BC5cCwmDemxrOj2A"
+          "cachedResultUrl": "https://drive.google.com/drive/folders/YOUR_NEEDS_REVIEW_FOLDER_ID"
         },
         "options": {}
       },
@@ -713,9 +713,8 @@
         },
         "folderId": {
           "__rl": true,
-          "mode": "list",
-          "value": "root",
-          "cachedResultName": "/ (Root folder)"
+          "value": "YOUR_PROCESSING_FAILED_FOLDER_ID",
+          "mode": "id"
         }
       },
       "id": "2095bd97-ab13-4c0e-8ba8-959966749491",
@@ -1089,7 +1088,9 @@
             "node": "Parse AI Response",
             "type": "main",
             "index": 0
-          },
+          }
+        ],
+        [
           {
             "node": "Move to Processing Failed",
             "type": "main",
@@ -1163,11 +1164,6 @@
     "Copy to Needs Review Folder": {
       "main": [
         [
-          {
-            "node": "Log Metadata",
-            "type": "main",
-            "index": 0
-          },
           {
             "node": "Log Review Metadata",
             "type": "main",
