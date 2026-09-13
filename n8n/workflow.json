@@ -1,0 +1,1226 @@
+{
+  "name": "SecondBrain AI - Screenshot Agent V1",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_SCREENSHOT_INBOX_FOLDER_ID",
+          "mode": "id"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "66b186b6-d3a1-4022-bd29-c1e676629e15",
+      "name": "Drive Trigger - Screenshot Inbox",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1104,
+        128
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "GZjgYlyTasYeLaHk",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $json.id }}",
+        "options": {}
+      },
+      "id": "585279ed-e336-4d77-acc2-93f7a30ac819",
+      "name": "Download Screenshot",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -880,
+        128
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "GZjgYlyTasYeLaHk",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst buffer = await this.helpers.getBinaryDataBuffer(0, 'data');\n\nconst hash = crypto\n  .createHash('sha256')\n  .update(buffer)\n  .digest('hex');\n\nreturn [{\n  json: {\n    ...$input.item.json,\n    sha256_hash: hash,\n    workflow_version: 'v1.0',\n    processing_start_ms: Date.now(),\n    retry_count: 0\n  },\n  binary: $input.item.binary\n}];"
+      },
+      "id": "3d700d79-cb97-43ad-b2ff-1ed2227e82f5",
+      "name": "Compute SHA256 Hash",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -656,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "YOUR_SCREENSHOT_REGISTRY_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SCREENSHOT_REGISTRY_SHEET_ID/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "sha256_hash",
+              "lookupValue": "={{ $json.sha256_hash }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7dbe9c93-125a-4ca8-900a-19b7b3372f9f",
+      "name": "Check Duplicate Hash",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -240,
+        128
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "B36G5oJhBH1qTlel",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.sha256_hash }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              },
+              "id": "aab3fbb1-89eb-46ef-bdf0-25b300d269ff"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3313ae15-25f4-4314-a734-ae95e0e86b34",
+      "name": "IF Duplicate Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        128
+      ],
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SCREENSHOT_REGISTRY_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "sha256_hash": "={{ $json.sha256_hash }}",
+            "filename": "={{ $json.filename }}",
+            "category": "DUPLICATE",
+            "tags": "duplicate, skipped",
+            "processed_at": "={{ new Date().toISOString() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "sha256_hash",
+              "displayName": "sha256_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "filename",
+              "displayName": "filename",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tags",
+              "displayName": "tags",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "processed_at",
+              "displayName": "processed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "18e64505-6ca5-4efb-a06d-6cef97a5192d",
+      "name": "Log Duplicate Skipped",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        208,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "B36G5oJhBH1qTlel",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://vision.googleapis.com/v1/images:annotate",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"requests\": [\n    {\n      \"image\": {\n        \"content\": \"{{ $('Prepare Image for OCR').item.json.imageBase64 }}\"\n      },\n      \"features\": [\n        {\n          \"type\": \"TEXT_DETECTION\"\n        }\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "d8e75e67-5206-4683-b89d-cb6edb9134f7",
+      "name": "OCR - Google Vision API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        208,
+        240
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "ibsPwZRfftVWNbGc",
+          "name": "Query Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.item.json;\nlet ocrText = '';\ntry {\n  ocrText = response.responses?.[0]?.textAnnotations?.[0]?.description || '';\n} catch (e) {\n  ocrText = '';\n}\n\nreturn [{ json: { ...$('Compute SHA256 Hash').item.json, ocr_text: ocrText.trim() }, binary: $('Compute SHA256 Hash').item.binary }];"
+      },
+      "id": "62428f0a-13ba-4f25-8435-5ca5b49b0632",
+      "name": "Extract OCR Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ocrText = ($json.ocr_text || '').toLowerCase();\n\nconst sensitivePatterns = [\n  // OTP / one-time password + numeric code\n  /\\b(?:otp|one[- ]time password)\\b[\\s\\S]{0,30}\\b\\d{4,8}\\b/i,\n  /\\b\\d{4,8}\\b[\\s\\S]{0,30}\\b(?:otp|one[- ]time password)\\b/i,\n\n  // Verification code + numeric code\n  /\\bverification code\\b[\\s\\S]{0,30}\\b\\d{4,8}\\b/i,\n  /\\b\\d{4,8}\\b[\\s\\S]{0,30}\\bverification code\\b/i,\n\n  // Explicit OTP warning\n  /do not share[\\s\\S]{0,30}(?:otp|one[- ]time password)/i,\n\n  // CVV/CVC\n  /\\b(?:cvv|cvc)\\b\\s*[:=-]?\\s*\\d{3,4}\\b/i,\n\n  // PIN\n  /\\bpin\\b\\s*[:=-]?\\s*\\d{4,6}\\b/i,\n\n  // Bank account number\n  /\\b(?:account number|account no|a\\/c no)[\\s\\S]{0,20}\\b\\d{8,18}\\b/i,\n\n  // Credit/debit card number\n  /\\b(?:\\d[ -]*?){13,19}\\b/i\n];\n\nconst isSensitive = sensitivePatterns.some(\n  pattern => pattern.test(ocrText)\n);\n\nreturn [{\n  json: {\n    ...$json,\n    is_sensitive: isSensitive\n  },\n  binary: $input.item.binary\n}];"
+      },
+      "id": "69369d9f-0594-4e77-81b8-b6f5e834e573",
+      "name": "Sensitive Filter Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        656,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.is_sensitive }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              },
+              "id": "a247501c-508a-4634-aff9-a31cfb266090"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d37d27a4-b844-4e89-965c-8eb8e9efb50e",
+      "name": "IF Sensitive",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        880,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "fileId": "={{ $json.id }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "YOUR_SENSITIVE_FOLDER_ID",
+          "mode": "id"
+        }
+      },
+      "id": "827fe5d5-e93c-498c-95d6-df6307f54493",
+      "name": "Move to Sensitive Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1088,
+        128
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "GZjgYlyTasYeLaHk",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SCREENSHOT_REGISTRY_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "sha256_hash": "={{ $('Compute SHA256 Hash').item.json.sha256_hash }}",
+            "filename": "={{ $('Compute SHA256 Hash').item.json.name }}",
+            "category": "SENSITIVE",
+            "tags": "sensitive, filtered",
+            "processed_at": "={{ new Date().toISOString() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "sha256_hash",
+              "displayName": "sha256_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "filename",
+              "displayName": "filename",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tags",
+              "displayName": "tags",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "processed_at",
+              "displayName": "processed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "cc46eb3e-eb8f-4832-bbb7-526204372710",
+      "name": "Log Sensitive Filtered",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1312,
+        128
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "B36G5oJhBH1qTlel",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llava\",\n  \"prompt\": {{ JSON.stringify(\"You are a screenshot classification assistant. Analyze the screenshot image AND the OCR text provided below. Your job is to classify the screenshot into exactly ONE category from this closed list: [\\\"LinkedIn\\\", \\\"Tech\\\", \\\"Finance\\\", \\\"Shopping\\\", \\\"Travel\\\", \\\"Documents\\\", \\\"Other\\\"]. Rules: Choose LinkedIn for LinkedIn posts, profiles, jobs, professional networking content, or LinkedIn UI. Choose Tech for programming, software, cloud, DevOps, Linux, AI, cybersecurity, technical tutorials, developer tools, or technology content. Choose Finance for stocks, investments, banking, trading, financial statements, personal finance, or market analysis. Choose Shopping for products, online stores, product listings, prices, orders, or shopping-related content. Choose Travel for flights, hotels, bookings, destinations, itineraries, maps related to travel, or travel planning. Choose Documents for formal documents, certificates, forms, receipts, invoices, IDs, reports, or other document-like content. Choose Other when none of the categories clearly fit or when the evidence is insufficient. Use BOTH the visual content and OCR text. Do not rely only on OCR. Generate 3-5 relevant lowercase tags. Generate a concise 4-6 word filename_description using lowercase words separated by hyphens. Provide a confidence score from 0 to 100 representing how confident you are in the classification. Provide one short sentence in classification_reason explaining the visual or textual evidence that led to the selected category. If the screenshot is ambiguous, choose Other and use a lower confidence score. IMPORTANT: Respond ONLY with valid JSON. Do not use markdown code fences. Do not add explanations before or after the JSON. The JSON must follow exactly this structure: {\\\"category\\\":\\\"\\\",\\\"confidence\\\":0,\\\"tags\\\":[],\\\"filename_description\\\":\\\"\\\",\\\"classification_reason\\\":\\\"\\\"}. OCR text: \" + $json.ocr_text) }},\n  \"images\": [\n    {{ JSON.stringify($('Prepare Image for OCR').item.json.imageBase64) }}\n  ],\n  \"stream\": false,\n  \"format\": \"json\"\n}",
+        "options": {}
+      },
+      "id": "a8a3f338-a010-4445-a3f7-cdec4f67dc6d",
+      "name": "Vision AI Classification (Ollama)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1088,
+        352
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "let parsed;\ntry {\n  const raw = $json.response || $json.message?.content || '{}';\n  parsed = JSON.parse(raw);\n  if (!parsed.category || typeof parsed.confidence !== 'number') {\n    throw new Error('missing fields');\n  }\n  if (!parsed.classification_reason) parsed.classification_reason = '';\n} catch (e) {\n  parsed = { category: 'Other', confidence: 0, tags: [], filename_description: 'unclassified', classification_reason: 'AI response could not be parsed' };\n}\n\nconst prior = $('Sensitive Filter Check').item.json;\nconst processingTimeMs = Date.now() - (prior.processing_start_ms || Date.now());\n\nreturn [{ json: { ...prior, ...parsed, processing_time_ms: processingTimeMs }, binary: $('Sensitive Filter Check').item.binary }];"
+      },
+      "id": "56402468-8d1e-4d82-af72-2be418e0ec58",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1312,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.confidence }}",
+              "rightValue": 70,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              },
+              "id": "0b831e97-d895-4c6f-b3d2-ca930ef2bd6f"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7879cc06-6316-4932-b990-5834a31bbc70",
+      "name": "IF Confidence >= 70",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1536,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const category = $json.category;\nconst date = new Date().toISOString().split('T')[0];\nconst desc = ($json.filename_description || 'screenshot').replace(/[^a-z0-9-]/gi, '-');\nconst newFilename = `${category}_${date}_${desc}.png`;\nreturn [{ json: { ...$json, new_filename: newFilename, target_folder: category }, binary: $input.item.binary }];"
+      },
+      "id": "5b074bf9-9525-42a5-bcee-407271f73f7a",
+      "name": "Build Filename (Filed)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const date = new Date().toISOString().split('T')[0];\nconst desc = ($json.filename_description || 'screenshot').replace(/[^a-z0-9-]/gi, '-');\nconst newFilename = `NeedsReview_${date}_${desc}.png`;\nreturn [{ json: { ...$json, new_filename: newFilename, target_folder: 'Needs Review' }, binary: $input.item.binary }];"
+      },
+      "id": "dd905f35-9104-41d7-9d36-6b025752d3d2",
+      "name": "Build Filename (Review)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "copy",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Compute SHA256 Hash').item.json.id }}",
+          "mode": "id"
+        },
+        "name": "={{ $('Build Filename (Filed)').item.json.new_filename }}",
+        "sameFolder": false,
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $('Find Category Folder').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "3f5ceb71-7409-4805-900d-058d59ed0906",
+      "name": "Copy to Category Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2176,
+        272
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "GZjgYlyTasYeLaHk",
+          "name": "Google Drive account"
+        }
+      },
+      "notes": "Set destination folder dynamically based on $json.target_folder - map category name to the corresponding folder ID (maintain this mapping in a Set node upstream or hardcode a switch)."
+    },
+    {
+      "parameters": {
+        "operation": "copy",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Build Filename (Review)').item.json.id }}",
+          "mode": ""
+        },
+        "name": "={{ $('Build Filename (Review)').item.json.new_filename }}",
+        "sameFolder": false,
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1rRNYKWf0r5JwAeL0BC5cCwmDemxrOj2A",
+          "mode": "list",
+          "cachedResultName": "Needs Review",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1rRNYKWf0r5JwAeL0BC5cCwmDemxrOj2A"
+        },
+        "options": {}
+      },
+      "id": "3628352c-90f5-4b28-a1cb-8829aca5f5c9",
+      "name": "Copy to Needs Review Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2176,
+        432
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "GZjgYlyTasYeLaHk",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SCREENSHOT_REGISTRY_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "sha256_hash": "={{ $('Compute SHA256 Hash').item.json.sha256_hash }}",
+            "filename": "={{ $('Build Filename (Filed)').item.json.new_filename }}",
+            "category": "={{ $('Parse AI Response').item.json.category }}",
+            "tags": "={{ $('Parse AI Response').item.json.tags.join(', ') }}",
+            "processed_at": "={{ new Date().toISOString() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "sha256_hash",
+              "displayName": "sha256_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "filename",
+              "displayName": "filename",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tags",
+              "displayName": "tags",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "processed_at",
+              "displayName": "processed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "1289ba44-159b-49e9-8968-f1e0b472762d",
+      "name": "Log Metadata",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2400,
+        352
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "B36G5oJhBH1qTlel",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "fileId": "={{ $('Compute SHA256 Hash').item.json.id }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "root",
+          "cachedResultName": "/ (Root folder)"
+        }
+      },
+      "id": "2095bd97-ab13-4c0e-8ba8-959966749491",
+      "name": "Move to Processing Failed",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1088,
+        528
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "GZjgYlyTasYeLaHk",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SCREENSHOT_REGISTRY_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "sha256_hash": "={{ $('Compute SHA256 Hash').item.json.sha256_hash }}",
+            "filename": "={{ $('Compute SHA256 Hash').item.json.name }}",
+            "category": "PROCESSING_FAILED",
+            "tags": "processing, failed",
+            "processed_at": "={{ new Date().toISOString() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "sha256_hash",
+              "displayName": "sha256_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "filename",
+              "displayName": "filename",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tags",
+              "displayName": "tags",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "processed_at",
+              "displayName": "processed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "ef46add5-dab5-4d27-9987-42a8cd247f3d",
+      "name": "Log Processing Failed",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1312,
+        528
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "B36G5oJhBH1qTlel",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const buffer = await this.helpers.getBinaryDataBuffer(0, 'data');\n\nreturn [{\n  json: {\n    ...$input.item.json,\n    imageBase64: buffer.toString('base64')\n  },\n  binary: $input.item.binary\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        128
+      ],
+      "id": "55d5c325-edbc-4f24-9f46-a3656f4314c3",
+      "name": "Prepare Image for OCR"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "={{ $('Build Filename (Filed)').item.json.target_folder }}",
+        "filter": {
+          "folderId": {
+            "mode": "list",
+            "value": "root",
+            "cachedResultName": "/ (Root folder)"
+          },
+          "whatToSearch": "folders"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1968,
+        272
+      ],
+      "id": "4a4c242b-4941-4258-a06b-e1a58c5bdfe1",
+      "name": "Find Category Folder",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "GZjgYlyTasYeLaHk",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SCREENSHOT_REGISTRY_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "sha256_hash": "={{ $('Compute SHA256 Hash').item.json.sha256_hash }}",
+            "filename": "={{ $('Build Filename (Review)').item.json.new_filename }}",
+            "category": "={{ $('Parse AI Response').item.json.category }}",
+            "tags": "={{ $('Parse AI Response').item.json.tags.join(', ') }}",
+            "processed_at": "={{ new Date().toISOString() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "sha256_hash",
+              "displayName": "sha256_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "filename",
+              "displayName": "filename",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tags",
+              "displayName": "tags",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "processed_at",
+              "displayName": "processed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "ae9bb4f0-e8bb-432c-887c-9cef4e6c4077",
+      "name": "Log Review Metadata",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2400,
+        544
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "B36G5oJhBH1qTlel",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Drive Trigger - Screenshot Inbox": {
+      "main": [
+        [
+          {
+            "node": "Download Screenshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Screenshot": {
+      "main": [
+        [
+          {
+            "node": "Compute SHA256 Hash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute SHA256 Hash": {
+      "main": [
+        [
+          {
+            "node": "Prepare Image for OCR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Duplicate Hash": {
+      "main": [
+        [
+          {
+            "node": "IF Duplicate Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Duplicate Found": {
+      "main": [
+        [
+          {
+            "node": "Log Duplicate Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "OCR - Google Vision API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OCR - Google Vision API": {
+      "main": [
+        [
+          {
+            "node": "Extract OCR Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract OCR Text": {
+      "main": [
+        [
+          {
+            "node": "Sensitive Filter Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sensitive Filter Check": {
+      "main": [
+        [
+          {
+            "node": "IF Sensitive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Sensitive": {
+      "main": [
+        [
+          {
+            "node": "Move to Sensitive Folder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Vision AI Classification (Ollama)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move to Sensitive Folder": {
+      "main": [
+        [
+          {
+            "node": "Log Sensitive Filtered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vision AI Classification (Ollama)": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Move to Processing Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [
+          {
+            "node": "IF Confidence >= 70",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Confidence >= 70": {
+      "main": [
+        [
+          {
+            "node": "Build Filename (Filed)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Filename (Review)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Filename (Filed)": {
+      "main": [
+        [
+          {
+            "node": "Find Category Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Filename (Review)": {
+      "main": [
+        [
+          {
+            "node": "Copy to Needs Review Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Copy to Category Folder": {
+      "main": [
+        [
+          {
+            "node": "Log Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Copy to Needs Review Folder": {
+      "main": [
+        [
+          {
+            "node": "Log Metadata",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Review Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move to Processing Failed": {
+      "main": [
+        [
+          {
+            "node": "Log Processing Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Image for OCR": {
+      "main": [
+        [
+          {
+            "node": "Check Duplicate Hash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Category Folder": {
+      "main": [
+        [
+          {
+            "node": "Copy to Category Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "e5860bd3-c1ca-4c04-9093-f93102ebff39",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9f0982a2489e1438c04b4a581efa945e9d20a34586692df2bb93bffd5c1e2059"
+  },
+  "id": "xn2i7vZuV9Vc6yZS",
+  "tags": []
+}

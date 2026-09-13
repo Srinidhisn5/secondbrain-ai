@@ -1,0 +1,43 @@
+# Secrets and environment files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*credentials*
+*secret*
+*token*
+
+# n8n local data
+.n8n/
+n8n_data/
+*.sqlite
+*.sqlite3
+database.sqlite
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Temporary / backup files
+*.tmp
+*.log
+*-backup.json
+workflow-old-backup.json
+
+# Private screenshots / test data
+screenshots/*
+!screenshots/.gitkeep
+
+# Local datasets
+dataset/sample_screenshots/*
+!dataset/sample_screenshots/.gitkeep
