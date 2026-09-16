@@ -569,7 +569,7 @@
           "name": "Google Drive account"
         }
       },
-      "notes": "The destination folder is resolved dynamically from the AI-selected category by the Find Category Folder node. Create the category folder in the root of My Drive before processing screenshots."
+      "notes": "Set destination folder dynamically based on $json.target_folder - map category name to the corresponding folder ID (maintain this mapping in a Set node upstream or hardcode a switch)."
     },
     {
       "parameters": {
@@ -714,7 +714,9 @@
         "folderId": {
           "__rl": true,
           "value": "YOUR_PROCESSING_FAILED_FOLDER_ID",
-          "mode": "id"
+          "mode": "list",
+          "cachedResultName": "Processing Failed",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/YOUR_PROCESSING_FAILED_FOLDER_ID"
         }
       },
       "id": "2095bd97-ab13-4c0e-8ba8-959966749491",
@@ -1088,9 +1090,7 @@
             "node": "Parse AI Response",
             "type": "main",
             "index": 0
-          }
-        ],
-        [
+          },
           {
             "node": "Move to Processing Failed",
             "type": "main",
@@ -1212,7 +1212,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "e5860bd3-c1ca-4c04-9093-f93102ebff39",
+  "versionId": "00aeff2a-f4de-4813-b7a7-906786fea1d9",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "9f0982a2489e1438c04b4a581efa945e9d20a34586692df2bb93bffd5c1e2059"
