@@ -41,3 +41,6 @@ screenshots/*
 # Local datasets
 dataset/sample_screenshots/*
 !dataset/sample_screenshots/.gitkeep
+
+# Private live n8n export
+SecondBrain AI - Screenshot Agent V1.json
